@@ -116,7 +116,7 @@ app.get('/api/products/:id', (req, res) => {
 app.get('/api/cart/:userId', (req, res) => {
   const userId = parseInt(req.params.userId);
   const userCart = carts.filter(c => c.userId === userId);
-  
+
   res.json({
     code: 200,
     message: 'success',
@@ -126,7 +126,7 @@ app.get('/api/cart/:userId', (req, res) => {
 
 app.post('/api/cart', (req, res) => {
   const { userId, productId, quantity = 1 } = req.body;
-  
+
   const product = products.find(p => p.id === productId);
   if (!product) {
     return res.status(404).json({
@@ -134,11 +134,11 @@ app.post('/api/cart', (req, res) => {
       message: '商品不存在'
     });
   }
-  
+
   const existingItem = carts.find(c => c.userId === userId && c.productId === productId);
-  
+
   if (existingItem) {
-    existingItem.quantity += quantity;
+    existingItem.quantity = quantity; // 更新为设置数量而不是累加
   } else {
     carts.push({
       id: Date.now(),
@@ -148,10 +148,31 @@ app.post('/api/cart', (req, res) => {
       product
     });
   }
-  
+
   res.json({
     code: 200,
-    message: '添加成功',
+    message: '操作成功',
+    data: null
+  });
+});
+
+// 删除购物车商品
+app.delete('/api/cart/:id', (req, res) => {
+  const cartId = parseInt(req.params.id);
+  const index = carts.findIndex(c => c.id === cartId);
+
+  if (index === -1) {
+    return res.status(404).json({
+      code: 404,
+      message: '购物车商品不存在'
+    });
+  }
+
+  carts.splice(index, 1);
+
+  res.json({
+    code: 200,
+    message: '删除成功',
     data: null
   });
 });
