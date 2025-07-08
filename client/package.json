@@ -1,0 +1,44 @@
+{
+  "name": "digital-mall-client",
+  "version": "1.0.0",
+  "description": "数码商城前端",
+  "main": "main.js",
+  "scripts": {
+    "dev:app": "uni-app",
+    "dev:custom": "uni-app",
+    "dev:h5": "uni-app --platform h5",
+    "dev:h5:ssr": "uni-app --platform h5 --ssr",
+    "dev:mp-alipay": "uni-app --platform mp-alipay",
+    "dev:mp-baidu": "uni-app --platform mp-baidu",
+    "dev:mp-weixin": "uni-app --platform mp-weixin",
+    "dev:mp-toutiao": "uni-app --platform mp-toutiao",
+    "dev:quickapp": "uni-app --platform quickapp",
+    "build:app": "uni-app --platform app --mode production",
+    "build:custom": "uni-app --mode production",
+    "build:h5": "uni-app --platform h5 --mode production",
+    "build:h5:ssr": "uni-app --platform h5 --ssr --mode production",
+    "build:mp-alipay": "uni-app --platform mp-alipay --mode production",
+    "build:mp-baidu": "uni-app --platform mp-baidu --mode production",
+    "build:mp-weixin": "uni-app --platform mp-weixin --mode production",
+    "build:mp-toutiao": "uni-app --platform mp-toutiao --mode production",
+    "build:quickapp": "uni-app --platform quickapp --mode production"
+  },
+  "keywords": ["uniapp", "vue"],
+  "author": "Levi-Li-cell",
+  "license": "MIT",
+  "dependencies": {
+    "@dcloudio/uni-app": "^3.0.0",
+    "@dcloudio/uni-components": "^3.0.0",
+    "@dcloudio/uni-h5": "^3.0.0",
+    "@dcloudio/uni-mp-alipay": "^3.0.0",
+    "@dcloudio/uni-mp-baidu": "^3.0.0",
+    "@dcloudio/uni-mp-weixin": "^3.0.0",
+    "@dcloudio/uni-quickapp": "^3.0.0",
+    "vue": "^3.2.0"
+  },
+  "devDependencies": {
+    "@dcloudio/uni-cli-shared": "^3.0.0",
+    "@dcloudio/vite-plugin-uni": "^3.0.0",
+    "vite": "^4.0.0"
+  }
+}
