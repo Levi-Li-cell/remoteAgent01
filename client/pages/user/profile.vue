@@ -66,7 +66,13 @@
         <text class="menu-name">我的收藏</text>
         <text class="menu-arrow">></text>
       </view>
-      
+
+      <view class="menu-item" @click="goCoupons">
+        <text class="menu-icon">🎫</text>
+        <text class="menu-name">优惠券</text>
+        <text class="menu-arrow">></text>
+      </view>
+
       <view class="menu-item" @click="goCustomerService">
         <text class="menu-icon">💬</text>
         <text class="menu-name">客服中心</text>
@@ -176,22 +182,27 @@ export default {
         this.goLogin()
         return
       }
-      
-      uni.showToast({
-        title: '订单功能开发中',
-        icon: 'none'
+
+      // 跳转到订单列表页面
+      let url = '/pages/order/list'
+      if (status) {
+        url += `?status=${status}`
+      }
+
+      uni.navigateTo({
+        url: url
       })
     },
-    
+
     goAddressList() {
       if (!this.isLogin) {
         this.goLogin()
         return
       }
-      
-      uni.showToast({
-        title: '地址管理开发中',
-        icon: 'none'
+
+      // 跳转到地址管理页面
+      uni.navigateTo({
+        url: '/pages/address/list'
       })
     },
     
@@ -200,10 +211,20 @@ export default {
         this.goLogin()
         return
       }
-      
-      uni.showToast({
-        title: '收藏功能开发中',
-        icon: 'none'
+
+      uni.navigateTo({
+        url: '/pages/user/favorites'
+      })
+    },
+
+    goCoupons() {
+      if (!this.isLogin) {
+        this.goLogin()
+        return
+      }
+
+      uni.navigateTo({
+        url: '/pages/user/coupons'
       })
     },
     

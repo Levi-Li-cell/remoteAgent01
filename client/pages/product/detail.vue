@@ -25,6 +25,10 @@
         <view class="product-meta">
           <text class="meta-item">库存: {{ product.stock }}件</text>
           <text class="meta-item">销量: {{ product.sales }}+</text>
+          <view class="favorite-btn" @click="toggleFavorite">
+            <text class="favorite-icon" :class="{ active: isFavorited }">❤️</text>
+            <text class="favorite-text">{{ isFavorited ? '已收藏' : '收藏' }}</text>
+          </view>
         </view>
         
         <view class="product-description">
@@ -32,7 +36,29 @@
           <text class="desc-content">{{ product.description }}</text>
         </view>
       </view>
-      
+
+      <!-- 评价预览 -->
+      <view v-if="reviewPreview" class="review-preview card" @click="goToReviews">
+        <view class="review-header">
+          <text class="review-title">商品评价</text>
+          <view class="review-summary">
+            <text class="review-rating">{{ reviewPreview.average_rating }}分</text>
+            <view class="rating-stars">
+              <text v-for="i in 5" :key="i" class="star" :class="{ active: i <= Math.floor(reviewPreview.average_rating) }">
+                ★
+              </text>
+            </view>
+            <text class="review-count">({{ reviewPreview.total_count }})</text>
+          </view>
+          <text class="review-arrow">></text>
+        </view>
+
+        <view v-if="reviewPreview.latest_review" class="latest-review">
+          <text class="review-content">{{ reviewPreview.latest_review.content }}</text>
+          <text class="review-user">{{ reviewPreview.latest_review.user?.username || '匿名用户' }}</text>
+        </view>
+      </view>
+
       <!-- 规格选择 -->
       <view class="spec-section card">
         <text class="section-title">选择规格</text>
@@ -91,7 +117,9 @@ export default {
         color: '',
         storage: ''
       },
-      currentImageIndex: 0
+      currentImageIndex: 0,
+      isFavorited: false,
+      reviewPreview: null
     }
   },
   
@@ -130,6 +158,10 @@ export default {
             this.selectedSpecs.storage = this.product.specs.storage[0].name
           }
         }
+
+        // 加载收藏状态和评价预览
+        this.checkFavoriteStatus()
+        this.loadReviewPreview()
 
       } catch (error) {
         console.error('加载商品详情失败:', error)
@@ -299,6 +331,101 @@ export default {
       uni.showToast({
         title: '功能开发中',
         icon: 'none'
+      })
+    },
+
+    async checkFavoriteStatus() {
+      if (!this.$utils.checkLogin()) return
+
+      try {
+        const res = await this.$request({
+          url: '/api/favorites',
+          method: 'GET',
+          data: { limit: 1000 } // 获取所有收藏
+        })
+
+        if (res.data) {
+          this.isFavorited = res.data.some(item => item.product_id === this.productId)
+        }
+      } catch (error) {
+        console.error('检查收藏状态失败:', error)
+      }
+    },
+
+    async toggleFavorite() {
+      if (!this.$utils.checkLogin()) {
+        this.$utils.goLogin()
+        return
+      }
+
+      try {
+        if (this.isFavorited) {
+          // 取消收藏 - 需要先找到收藏记录的ID
+          const res = await this.$request({
+            url: '/api/favorites',
+            method: 'GET'
+          })
+
+          const favoriteItem = res.data.find(item => item.product_id === this.productId)
+          if (favoriteItem) {
+            await this.$request({
+              url: `/api/favorites/${favoriteItem.id}`,
+              method: 'DELETE'
+            })
+
+            this.isFavorited = false
+            uni.showToast({
+              title: '取消收藏成功',
+              icon: 'success'
+            })
+          }
+        } else {
+          // 添加收藏
+          await this.$request({
+            url: '/api/favorites',
+            method: 'POST',
+            data: {
+              product_id: this.productId
+            }
+          })
+
+          this.isFavorited = true
+          uni.showToast({
+            title: '收藏成功',
+            icon: 'success'
+          })
+        }
+      } catch (error) {
+        console.error('收藏操作失败:', error)
+        uni.showToast({
+          title: error.message || '操作失败',
+          icon: 'none'
+        })
+      }
+    },
+
+    async loadReviewPreview() {
+      try {
+        const res = await this.$request({
+          url: `/api/products/${this.productId}/reviews`,
+          method: 'GET',
+          data: { page: 1, limit: 1 }
+        })
+
+        if (res.data && res.data.stats) {
+          this.reviewPreview = {
+            ...res.data.stats,
+            latest_review: res.data.reviews && res.data.reviews[0] ? res.data.reviews[0] : null
+          }
+        }
+      } catch (error) {
+        console.error('加载评价预览失败:', error)
+      }
+    },
+
+    goToReviews() {
+      uni.navigateTo({
+        url: `/pages/product/reviews?productId=${this.productId}`
       })
     }
   }

@@ -210,11 +210,185 @@ let products = [
 let cartItems = [];
 
 // 订单数据
-let orders = [];
-let orderItems = [];
+let orders = [
+  {
+    id: 1,
+    order_no: 'ORD20240708001',
+    user_id: 999,
+    total_amount: 15998.00,
+    shipping_address: {
+      name: '张三',
+      phone: '13800138000',
+      province: '广东省',
+      city: '深圳市',
+      district: '南山区',
+      detail: '科技园南区深圳湾科技生态园',
+      postal_code: '518000'
+    },
+    status: 'pending',
+    payment_method: 'wechat_pay',
+    payment_status: 'pending',
+    remark: '请尽快发货',
+    created_at: new Date('2024-07-08'),
+    updated_at: new Date('2024-07-08')
+  }
+];
+
+let orderItems = [
+  {
+    id: 1,
+    order_id: 1,
+    product_id: 1,
+    product_name: 'iPhone 15 Pro',
+    product_price: 7999.00,
+    quantity: 2,
+    selected_specs: {
+      color: '深空黑',
+      storage: '256GB'
+    },
+    subtotal: 15998.00
+  }
+];
 
 // 用户地址数据
-let userAddresses = [];
+let userAddresses = [
+  {
+    id: 1,
+    user_id: 999,
+    name: '张三',
+    phone: '13800138000',
+    province: '广东省',
+    city: '深圳市',
+    district: '南山区',
+    detail: '科技园南区深圳湾科技生态园',
+    postal_code: '518000',
+    is_default: true,
+    created_at: new Date('2024-07-08'),
+    updated_at: new Date('2024-07-08')
+  },
+  {
+    id: 2,
+    user_id: 999,
+    name: '李四',
+    phone: '13900139000',
+    province: '北京市',
+    city: '北京市',
+    district: '朝阳区',
+    detail: '三里屯SOHO',
+    postal_code: '100000',
+    is_default: false,
+    created_at: new Date('2024-07-08'),
+    updated_at: new Date('2024-07-08')
+  }
+];
+
+// 商品评价数据
+let productReviews = [
+  {
+    id: 1,
+    product_id: 1,
+    user_id: 999,
+    order_id: 1,
+    rating: 5,
+    content: '非常好用的手机，拍照效果很棒，系统流畅！',
+    images: [
+      'https://via.placeholder.com/300x300?text=评价图1',
+      'https://via.placeholder.com/300x300?text=评价图2'
+    ],
+    reply: '感谢您的好评，我们会继续努力！',
+    helpful_count: 12,
+    created_at: new Date('2024-07-01'),
+    updated_at: new Date('2024-07-01')
+  },
+  {
+    id: 2,
+    product_id: 1,
+    user_id: 1,
+    order_id: null,
+    rating: 4,
+    content: '整体不错，就是价格有点贵',
+    images: [],
+    reply: null,
+    helpful_count: 5,
+    created_at: new Date('2024-07-05'),
+    updated_at: new Date('2024-07-05')
+  }
+];
+
+// 优惠券数据
+let coupons = [
+  {
+    id: 1,
+    name: '新用户专享',
+    type: 'discount', // discount: 折扣, amount: 满减
+    value: 0.9, // 9折
+    min_amount: 100, // 最低消费
+    max_discount: 50, // 最大优惠
+    start_time: new Date('2024-07-01'),
+    end_time: new Date('2024-12-31'),
+    total_count: 1000,
+    used_count: 120,
+    status: 'active',
+    description: '新用户首单9折优惠',
+    created_at: new Date('2024-07-01')
+  },
+  {
+    id: 2,
+    name: '满减优惠券',
+    type: 'amount',
+    value: 50, // 减50元
+    min_amount: 299,
+    max_discount: 50,
+    start_time: new Date('2024-07-01'),
+    end_time: new Date('2024-08-31'),
+    total_count: 500,
+    used_count: 89,
+    status: 'active',
+    description: '满299减50',
+    created_at: new Date('2024-07-01')
+  }
+];
+
+// 用户优惠券关联
+let userCoupons = [
+  {
+    id: 1,
+    user_id: 999,
+    coupon_id: 1,
+    status: 'unused', // unused: 未使用, used: 已使用, expired: 已过期
+    received_at: new Date('2024-07-08'),
+    used_at: null,
+    order_id: null
+  }
+];
+
+// 搜索历史
+let searchHistory = [
+  {
+    id: 1,
+    user_id: 999,
+    keyword: 'iPhone',
+    search_count: 5,
+    last_search_at: new Date('2024-07-08')
+  },
+  {
+    id: 2,
+    user_id: 999,
+    keyword: 'MacBook',
+    search_count: 3,
+    last_search_at: new Date('2024-07-07')
+  }
+];
+
+// 商品收藏
+let productFavorites = [
+  {
+    id: 1,
+    user_id: 999,
+    product_id: 2,
+    created_at: new Date('2024-07-08')
+  }
+];
 
 // 自增ID计数器
 let counters = {
@@ -224,7 +398,12 @@ let counters = {
   cartItems: 1,
   orders: 1,
   orderItems: 1,
-  userAddresses: 1
+  userAddresses: 1,
+  productReviews: productReviews.length + 1,
+  coupons: coupons.length + 1,
+  userCoupons: userCoupons.length + 1,
+  searchHistory: searchHistory.length + 1,
+  productFavorites: productFavorites.length + 1
 };
 
 /**
@@ -327,7 +506,12 @@ module.exports = {
   orders,
   orderItems,
   userAddresses,
-  
+  productReviews,
+  coupons,
+  userCoupons,
+  searchHistory,
+  productFavorites,
+
   // 工具函数
   getNextId,
   generateOrderNo,

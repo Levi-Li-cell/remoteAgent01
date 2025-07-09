@@ -298,17 +298,49 @@ export default {
     },
     
     checkout() {
-      if (this.selectedCount === 0) {
+      const selectedItems = this.cartItems.filter(item => item.selected)
+
+      if (selectedItems.length === 0) {
         uni.showToast({
-          title: '请选择商品',
+          title: '请选择要结算的商品',
           icon: 'none'
         })
         return
       }
-      
-      uni.showToast({
-        title: '结算功能开发中',
-        icon: 'none'
+
+      // 检查登录状态
+      if (!this.$utils.checkLogin()) {
+        uni.showModal({
+          title: '提示',
+          content: '请先登录',
+          success: (res) => {
+            if (res.confirm) {
+              this.$utils.goLogin()
+            }
+          }
+        })
+        return
+      }
+
+      // 检查库存
+      const outOfStockItems = selectedItems.filter(item =>
+        item.product && item.quantity > item.product.stock
+      )
+
+      if (outOfStockItems.length > 0) {
+        uni.showToast({
+          title: '部分商品库存不足',
+          icon: 'none'
+        })
+        return
+      }
+
+      // 跳转到订单确认页面
+      const cartItemIds = selectedItems.map(item => item.id)
+      const cartItemIdsStr = encodeURIComponent(JSON.stringify(cartItemIds))
+
+      uni.navigateTo({
+        url: `/pages/order/confirm?cartItemIds=${cartItemIdsStr}`
       })
     }
   }
