@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品详情页布局设计</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义样式补充 */
+        .zoom-overlay {
+            background: rgba(0,0,0,0.1);
+        }
+        .thumb-active {
+            border-color: #3B82F6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .spec-active {
+            background-color: #3B82F6 !important;
+            color: white !important;
+            border-color: #3B82F6 !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 商品详情页主容器 -->
+    <div class="product-detail-container min-h-screen">
+        <!-- 导航栏 -->
+        <nav class="product-nav sticky top-0 z-50 bg-white shadow-sm border-b">
+            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+                <button class="nav-back flex items-center text-gray-600 hover:text-gray-900">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    返回
+                </button>
+                <h1 class="nav-title font-medium text-gray-900">商品详情</h1>
+                <button class="nav-share text-gray-600 hover:text-gray-900">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="product-main container mx-auto px-4 py-6 max-w-7xl">
+            <!-- 桌面端: 左右布局 | 移动端: 上下布局 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                
+                <!-- 左侧: 商品图片区域 -->
+                <section class="product-gallery">
+                    <!-- 主图显示区 -->
+                    <div class="gallery-main mb-4">
+                        <div class="main-image-container relative aspect-square bg-white rounded-lg shadow-sm overflow-hidden group">
+                            <img 
+                                class="main-image w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                src="https://via.placeholder.com/600x600/f0f0f0/666?text=iPhone+15+Pro"
+                                alt="商品主图"
+                            />
+                            <!-- 放大镜效果 -->
+                            <div class="zoom-overlay absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-zoom-in">
+                                <div class="zoom-lens absolute w-32 h-32 border-2 border-blue-500 pointer-events-none hidden"></div>
+                            </div>
+                            <!-- 图片指示器 -->
+                            <div class="image-indicator absolute bottom-4 right-4 bg-black bg-opacity-50 text-white text-sm px-2 py-1 rounded">
+                                1 / 5
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 缩略图列表 -->
+                    <div class="gallery-thumbs">
+                        <div class="thumbs-container flex gap-2 overflow-x-auto pb-2">
+                            <div class="thumb-item thumb-active flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-md overflow-hidden border-2 border-blue-500 cursor-pointer transition-all hover:shadow-md">
+                                <img class="w-full h-full object-cover" src="https://via.placeholder.com/80x80/f0f0f0/666?text=1" alt="缩略图1" />
+                            </div>
+                            <div class="thumb-item flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-md overflow-hidden border-2 border-gray-200 cursor-pointer transition-all hover:border-blue-300 hover:shadow-md">
+                                <img class="w-full h-full object-cover" src="https://via.placeholder.com/80x80/f0f0f0/666?text=2" alt="缩略图2" />
+                            </div>
+                            <div class="thumb-item flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-md overflow-hidden border-2 border-gray-200 cursor-pointer transition-all hover:border-blue-300 hover:shadow-md">
+                                <img class="w-full h-full object-cover" src="https://via.placeholder.com/80x80/f0f0f0/666?text=3" alt="缩略图3" />
+                            </div>
+                            <div class="thumb-item flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-md overflow-hidden border-2 border-gray-200 cursor-pointer transition-all hover:border-blue-300 hover:shadow-md">
+                                <img class="w-full h-full object-cover" src="https://via.placeholder.com/80x80/f0f0f0/666?text=4" alt="缩略图4" />
+                            </div>
+                            <div class="thumb-item flex-shrink-0 w-16 h-16 lg:w-20 lg:h-20 rounded-md overflow-hidden border-2 border-gray-200 cursor-pointer transition-all hover:border-blue-300 hover:shadow-md">
+                                <img class="w-full h-full object-cover" src="https://via.placeholder.com/80x80/f0f0f0/666?text=5" alt="缩略图5" />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 右侧: 商品信息区域 -->
+                <section class="product-info">
+                    <!-- 商品标题区 -->
+                    <header class="info-header mb-6">
+                        <h1 class="product-title text-2xl lg:text-3xl font-bold text-gray-900 mb-2 leading-tight">
+                            iPhone 15 Pro 深空黑色
+                        </h1>
+                        <p class="product-subtitle text-gray-600 text-sm lg:text-base">
+                            搭载A17 Pro芯片，钛金属设计，专业级摄影系统
+                        </p>
+                    </header>
+                    
+                    <!-- 价格区域 -->
+                    <div class="info-price mb-6 p-4 bg-red-50 rounded-lg border border-red-100">
+                        <div class="price-main flex items-baseline gap-2 mb-2">
+                            <span class="current-price text-3xl lg:text-4xl font-bold text-red-600">
+                                ¥<span class="price-value">7999</span>
+                            </span>
+                            <span class="original-price text-lg text-gray-400 line-through">
+                                ¥8999
+                            </span>
+                            <span class="discount-badge bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                8.9折
+                            </span>
+                        </div>
+                        <div class="price-info flex gap-4 text-sm text-gray-600">
+                            <span class="stock-info">库存: <span class="stock-count text-green-600 font-medium">99</span>件</span>
+                            <span class="sales-info">已售: <span class="sales-count font-medium">1200</span>+</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 商品规格选择区 -->
+                    <div class="info-specs mb-6 space-y-4">
+                        <!-- 颜色选择 -->
+                        <div class="spec-group">
+                            <label class="spec-label block text-sm font-medium text-gray-700 mb-2">
+                                颜色分类
+                            </label>
+                            <div class="spec-options flex flex-wrap gap-2">
+                                <button class="spec-option spec-active px-4 py-2 border border-blue-500 bg-blue-500 text-white rounded-md text-sm transition-all hover:shadow-md">
+                                    深空黑
+                                </button>
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                                    银色
+                                </button>
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                                    金色
+                                </button>
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
+                                    蓝色钛金属
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 容量选择 -->
+                        <div class="spec-group">
+                            <label class="spec-label block text-sm font-medium text-gray-700 mb-2">
+                                存储容量
+                            </label>
+                            <div class="spec-options flex flex-wrap gap-2">
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 transition-all">
+                                    128GB
+                                </button>
+                                <button class="spec-option spec-active px-4 py-2 border border-blue-500 bg-blue-500 text-white rounded-md text-sm transition-all">
+                                    256GB
+                                </button>
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 transition-all">
+                                    512GB
+                                </button>
+                                <button class="spec-option px-4 py-2 border border-gray-300 rounded-md text-sm hover:border-blue-500 transition-all">
+                                    1TB
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 数量选择 -->
+                        <div class="spec-group">
+                            <label class="spec-label block text-sm font-medium text-gray-700 mb-2">
+                                购买数量
+                            </label>
+                            <div class="quantity-selector flex items-center gap-3">
+                                <div class="quantity-controls flex items-center border border-gray-300 rounded-md overflow-hidden">
+                                    <button class="quantity-btn decrease w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                        </svg>
+                                    </button>
+                                    <input class="quantity-input w-16 h-10 text-center border-0 focus:ring-0 focus:outline-none" type="number" value="1" min="1" max="5" />
+                                    <button class="quantity-btn increase w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="quantity-limit text-sm text-gray-500">
+                                    限购5件
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 操作按钮区 -->
+                    <div class="info-actions space-y-3">
+                        <!-- 主要操作按钮 -->
+                        <div class="action-buttons flex gap-3">
+                            <button class="btn-add-cart flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:ring-4 focus:ring-orange-200 active:scale-95">
+                                <span class="btn-icon mr-2">🛒</span>
+                                加入购物车
+                            </button>
+                            <button class="btn-buy-now flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:ring-4 focus:ring-red-200 active:scale-95">
+                                立即购买
+                            </button>
+                        </div>
+                        
+                        <!-- 次要操作按钮 -->
+                        <div class="secondary-actions flex gap-3">
+                            <button class="btn-favorite flex-1 border border-gray-300 hover:border-red-500 hover:text-red-500 text-gray-600 py-2 px-4 rounded-lg transition-all duration-200">
+                                <span class="btn-icon mr-1">❤️</span>
+                                收藏
+                            </button>
+                            <button class="btn-share flex-1 border border-gray-300 hover:border-blue-500 hover:text-blue-500 text-gray-600 py-2 px-4 rounded-lg transition-all duration-200">
+                                <span class="btn-icon mr-1">📤</span>
+                                分享
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 服务保障 -->
+                    <div class="service-guarantee mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h3 class="guarantee-title text-sm font-medium text-gray-700 mb-2">服务保障</h3>
+                        <div class="guarantee-list grid grid-cols-2 gap-2 text-xs text-gray-600">
+                            <div class="guarantee-item flex items-center">
+                                <span class="item-icon mr-1">✅</span>
+                                正品保证
+                            </div>
+                            <div class="guarantee-item flex items-center">
+                                <span class="item-icon mr-1">🚚</span>
+                                快速配送
+                            </div>
+                            <div class="guarantee-item flex items-center">
+                                <span class="item-icon mr-1">🔄</span>
+                                7天退换
+                            </div>
+                            <div class="guarantee-item flex items-center">
+                                <span class="item-icon mr-1">🛡️</span>
+                                售后保障
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- 商品详情描述区 (全宽) -->
+            <section class="product-description mt-12">
+                <div class="description-tabs border-b border-gray-200 mb-6">
+                    <nav class="tab-nav flex space-x-8">
+                        <button class="tab-item active border-b-2 border-blue-500 text-blue-600 py-2 px-1 text-sm font-medium transition-colors">
+                            商品详情
+                        </button>
+                        <button class="tab-item border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium transition-colors">
+                            规格参数
+                        </button>
+                        <button class="tab-item border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-2 px-1 text-sm font-medium transition-colors">
+                            用户评价
+                        </button>
+                    </nav>
+                </div>
+                
+                <div class="description-content">
+                    <!-- 商品详情内容 -->
+                    <div class="content-panel bg-white rounded-lg p-6 shadow-sm">
+                        <div class="content-text space-y-4 text-gray-700 leading-relaxed">
+                            <p>iPhone 15 Pro 采用航空级钛金属设计，更轻、更坚固、更专业。</p>
+                            <p>搭载全新A17 Pro芯片，性能提升显著，为专业级应用提供强大动力。</p>
+                            <p>配备先进的摄像头系统，支持5倍光学变焦，让每一张照片都充满专业质感。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- 移动端底部固定操作栏 -->
+        <div class="mobile-bottom-bar lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 shadow-lg">
+            <div class="flex gap-3">
+                <button class="btn-mobile-cart flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors active:scale-95">
+                    加入购物车
+                </button>
+                <button class="btn-mobile-buy flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium transition-colors active:scale-95">
+                    立即购买
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 简单的交互脚本演示 -->
+    <script>
+        // 缩略图切换
+        document.querySelectorAll('.thumb-item').forEach((thumb, index) => {
+            thumb.addEventListener('click', () => {
+                // 移除所有active状态
+                document.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('thumb-active'));
+                // 添加当前active状态
+                thumb.classList.add('thumb-active');
+                // 更新主图 (这里只是演示)
+                console.log(`切换到第${index + 1}张图片`);
+            });
+        });
+
+        // 规格选择
+        document.querySelectorAll('.spec-group').forEach(group => {
+            group.querySelectorAll('.spec-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    // 移除同组其他选项的active状态
+                    group.querySelectorAll('.spec-option').forEach(opt => {
+                        opt.classList.remove('spec-active');
+                        opt.classList.add('border-gray-300');
+                        opt.classList.remove('border-blue-500', 'bg-blue-500', 'text-white');
+                    });
+                    // 添加当前选项的active状态
+                    option.classList.add('spec-active');
+                });
+            });
+        });
+
+        // 数量控制
+        const decreaseBtn = document.querySelector('.quantity-btn.decrease');
+        const increaseBtn = document.querySelector('.quantity-btn.increase');
+        const quantityInput = document.querySelector('.quantity-input');
+
+        decreaseBtn.addEventListener('click', () => {
+            const currentValue = parseInt(quantityInput.value);
+            if (currentValue > 1) {
+                quantityInput.value = currentValue - 1;
+            }
+        });
+
+        increaseBtn.addEventListener('click', () => {
+            const currentValue = parseInt(quantityInput.value);
+            const maxValue = parseInt(quantityInput.max);
+            if (currentValue < maxValue) {
+                quantityInput.value = currentValue + 1;
+            }
+        });
+    </script>
+</body>
+</html>
