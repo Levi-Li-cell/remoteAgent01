@@ -99,13 +99,63 @@ export default {
   onShow() {
     this.checkLoginStatus()
   },
-  
+
   methods: {
-    checkLoginStatus() {
-      this.isLogin = uni.getStorageSync('isLogin') || false
+    async checkLoginStatus() {
+      const isLogin = uni.getStorageSync('isLogin') || false
+      const token = uni.getStorageSync('token')
+
+      this.isLogin = isLogin && token
+
       if (this.isLogin) {
-        this.userInfo = uni.getStorageSync('userInfo') || {}
+        // 尝试从本地获取用户信息
+        const localUserInfo = uni.getStorageSync('userInfo')
+        if (localUserInfo) {
+          this.userInfo = localUserInfo
+        }
+
+        // 从服务器获取最新用户信息
+        await this.loadUserProfile()
+      } else {
+        this.userInfo = {}
       }
+    },
+
+    async loadUserProfile() {
+      const token = uni.getStorageSync('token')
+      if (!token) return
+
+      try {
+        const res = await this.$request({
+          url: '/api/user/profile',
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (res.data) {
+          this.userInfo = res.data
+          // 更新本地存储
+          uni.setStorageSync('userInfo', res.data)
+        }
+
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+
+        // 如果token无效，清除登录状态
+        if (error.code === 401 || error.code === 403) {
+          this.clearLoginStatus()
+        }
+      }
+    },
+
+    clearLoginStatus() {
+      uni.removeStorageSync('token')
+      uni.removeStorageSync('userInfo')
+      uni.removeStorageSync('isLogin')
+      this.isLogin = false
+      this.userInfo = {}
     },
     
     goLogin() {
@@ -177,18 +227,19 @@ export default {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            // 清除登录信息
-            uni.removeStorageSync('token')
-            uni.removeStorageSync('userInfo')
-            uni.removeStorageSync('isLogin')
-            
-            this.isLogin = false
-            this.userInfo = {}
-            
+            this.clearLoginStatus()
+
             uni.showToast({
               title: '已退出登录',
               icon: 'success'
             })
+
+            // 可选：跳转到首页
+            setTimeout(() => {
+              uni.switchTab({
+                url: '/pages/index/index'
+              })
+            }, 1500)
           }
         }
       })

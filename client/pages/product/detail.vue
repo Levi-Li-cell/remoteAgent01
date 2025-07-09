@@ -86,7 +86,12 @@ export default {
       productId: null,
       product: null,
       loading: true,
-      quantity: 1
+      quantity: 1,
+      selectedSpecs: {
+        color: '',
+        storage: ''
+      },
+      currentImageIndex: 0
     }
   },
   
@@ -97,28 +102,93 @@ export default {
   
   methods: {
     async loadProductDetail() {
+      if (!this.productId) {
+        uni.showToast({
+          title: '商品ID无效',
+          icon: 'none'
+        })
+        return
+      }
+
       this.loading = true
       try {
         const res = await this.$request({
-          url: `/api/products/${this.productId}`
+          url: `/api/products/${this.productId}`,
+          method: 'GET'
         })
+
         this.product = res.data
+
+        // 设置默认选中的规格
+        if (this.product.specs) {
+          // 默认选中第一个颜色
+          if (this.product.specs.colors && this.product.specs.colors.length > 0) {
+            this.selectedSpecs.color = this.product.specs.colors[0].name
+          }
+          // 默认选中第一个存储容量
+          if (this.product.specs.storage && this.product.specs.storage.length > 0) {
+            this.selectedSpecs.storage = this.product.specs.storage[0].name
+          }
+        }
+
       } catch (error) {
         console.error('加载商品详情失败:', error)
         uni.showToast({
-          title: '加载失败',
+          title: '商品不存在或已下架',
           icon: 'none'
         })
+
+        // 延迟返回上一页
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 2000)
       } finally {
         this.loading = false
       }
     },
-    
+
     previewImage() {
-      uni.previewImage({
-        urls: [this.product.image],
-        current: this.product.image
-      })
+      if (this.product && this.product.images && this.product.images.length > 0) {
+        uni.previewImage({
+          urls: this.product.images,
+          current: this.product.images[this.currentImageIndex]
+        })
+      }
+    },
+
+    // 切换商品图片
+    switchImage(index) {
+      this.currentImageIndex = index
+    },
+
+    // 选择规格
+    selectSpec(specType, specValue) {
+      this.selectedSpecs[specType] = specValue
+
+      // 根据规格计算价格差异
+      this.calculatePrice()
+    },
+
+    // 计算价格 (根据选中规格)
+    calculatePrice() {
+      if (!this.product || !this.product.specs) return this.product.price
+
+      let totalPriceDiff = 0
+
+      // 计算存储容量价格差异
+      if (this.selectedSpecs.storage && this.product.specs.storage) {
+        const storageSpec = this.product.specs.storage.find(s => s.name === this.selectedSpecs.storage)
+        if (storageSpec && storageSpec.price_diff) {
+          totalPriceDiff += storageSpec.price_diff
+        }
+      }
+
+      return this.product.price + totalPriceDiff
+    },
+
+    // 获取当前选中规格的价格
+    getCurrentPrice() {
+      return this.calculatePrice()
     },
     
     decreaseQuantity() {
@@ -135,7 +205,9 @@ export default {
     
     async addToCart() {
       const isLogin = uni.getStorageSync('isLogin')
-      if (!isLogin) {
+      const token = uni.getStorageSync('token')
+
+      if (!isLogin || !token) {
         uni.showModal({
           title: '提示',
           content: '请先登录',
@@ -149,24 +221,60 @@ export default {
         })
         return
       }
-      
+
+      // 检查是否选择了必要规格
+      if (this.product.specs) {
+        if (this.product.specs.colors && this.product.specs.colors.length > 0 && !this.selectedSpecs.color) {
+          uni.showToast({
+            title: '请选择颜色',
+            icon: 'none'
+          })
+          return
+        }
+
+        if (this.product.specs.storage && this.product.specs.storage.length > 0 && !this.selectedSpecs.storage) {
+          uni.showToast({
+            title: '请选择存储容量',
+            icon: 'none'
+          })
+          return
+        }
+      }
+
       try {
+        uni.showLoading({
+          title: '添加中...'
+        })
+
         await this.$request({
           url: '/api/cart',
           method: 'POST',
+          header: {
+            'Authorization': `Bearer ${token}`
+          },
           data: {
-            userId: 999,
-            productId: this.product.id,
-            quantity: this.quantity
+            product_id: this.product.id,
+            quantity: this.quantity,
+            selected_specs: this.selectedSpecs
           }
         })
-        
+
+        uni.hideLoading()
         uni.showToast({
           title: '添加成功',
           icon: 'success'
         })
+
+        // 可选：震动反馈
+        uni.vibrateShort()
+
       } catch (error) {
+        uni.hideLoading()
         console.error('添加购物车失败:', error)
+        uni.showToast({
+          title: error.message || '添加失败',
+          icon: 'none'
+        })
       }
     },
     

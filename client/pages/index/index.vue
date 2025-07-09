@@ -94,22 +94,47 @@ export default {
         this.categories = res.data
       } catch (error) {
         console.error('加载分类失败:', error)
+        uni.showToast({
+          title: '加载分类失败',
+          icon: 'none'
+        })
       }
     },
-    
+
     async loadProducts() {
       this.loading = true
       try {
+        const params = {
+          page: 1,
+          limit: 20
+        }
+
+        // 添加分类筛选
+        if (this.selectedCategory && this.selectedCategory !== 'all') {
+          const category = this.categories.find(c => c.id === this.selectedCategory)
+          if (category) {
+            params.category = category.name
+          }
+        }
+
+        // 添加搜索关键词
+        if (this.searchKeyword.trim()) {
+          params.keyword = this.searchKeyword.trim()
+        }
+
         const res = await this.$request({
           url: '/api/products',
-          data: {
-            category: this.selectedCategory,
-            keyword: this.searchKeyword
-          }
+          method: 'GET',
+          data: params
         })
-        this.products = res.data
+
+        this.products = res.data || []
       } catch (error) {
         console.error('加载商品失败:', error)
+        uni.showToast({
+          title: '加载商品失败',
+          icon: 'none'
+        })
       } finally {
         this.loading = false
       }
@@ -117,10 +142,19 @@ export default {
     
     selectCategory(categoryId) {
       this.selectedCategory = categoryId
+      this.searchKeyword = '' // 切换分类时清空搜索
       this.loadProducts()
     },
-    
+
     searchProducts() {
+      if (this.searchKeyword.trim().length < 2) {
+        uni.showToast({
+          title: '请输入至少2个字符',
+          icon: 'none'
+        })
+        return
+      }
+      this.selectedCategory = 'all' // 搜索时重置分类
       this.loadProducts()
     },
     

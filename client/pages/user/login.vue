@@ -8,12 +8,13 @@
     
     <view class="login-form card">
       <view class="form-item">
-        <text class="form-label">用户名</text>
-        <input 
-          class="form-input" 
-          placeholder="请输入用户名"
+        <text class="form-label">邮箱</text>
+        <input
+          class="form-input"
+          placeholder="请输入邮箱地址"
           v-model="loginForm.username"
-          maxlength="20"
+          type="email"
+          maxlength="50"
         />
       </view>
       
@@ -95,14 +96,16 @@ export default {
   
   methods: {
     async handleLogin() {
-      if (!this.loginForm.username.trim()) {
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(this.loginForm.username.trim())) {
         uni.showToast({
-          title: '请输入用户名',
+          title: '请输入正确的邮箱格式',
           icon: 'none'
         })
         return
       }
-      
+
       if (!this.loginForm.password.trim()) {
         uni.showToast({
           title: '请输入密码',
@@ -110,32 +113,51 @@ export default {
         })
         return
       }
-      
+
+      if (this.loginForm.password.length < 6) {
+        uni.showToast({
+          title: '密码至少6位',
+          icon: 'none'
+        })
+        return
+      }
+
       this.loading = true
       try {
         const res = await this.$request({
-          url: '/api/login',
+          url: '/api/user/login',
           method: 'POST',
-          data: this.loginForm
+          data: {
+            email: this.loginForm.username.trim(),
+            password: this.loginForm.password
+          }
         })
-        
+
         // 保存登录状态
-        uni.setStorageSync('token', res.data.token)
-        uni.setStorageSync('userInfo', res.data)
-        uni.setStorageSync('isLogin', true)
-        
-        uni.showToast({
-          title: '登录成功',
-          icon: 'success'
-        })
-        
-        // 延迟跳转，让用户看到成功提示
-        setTimeout(() => {
-          this.navigateBack()
-        }, 1500)
-        
+        if (res.data && res.data.token) {
+          uni.setStorageSync('token', res.data.token)
+          uni.setStorageSync('userInfo', res.data.user)
+          uni.setStorageSync('isLogin', true)
+
+          uni.showToast({
+            title: '登录成功',
+            icon: 'success'
+          })
+
+          // 延迟跳转，让用户看到成功提示
+          setTimeout(() => {
+            this.navigateBack()
+          }, 1500)
+        } else {
+          throw new Error('登录响应数据异常')
+        }
+
       } catch (error) {
         console.error('登录失败:', error)
+        uni.showToast({
+          title: error.message || '登录失败，请检查账号密码',
+          icon: 'none'
+        })
       } finally {
         this.loading = false
       }

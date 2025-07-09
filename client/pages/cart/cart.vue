@@ -128,22 +128,40 @@ export default {
   methods: {
     async loadCartItems() {
       const isLogin = uni.getStorageSync('isLogin')
-      if (!isLogin) {
+      const token = uni.getStorageSync('token')
+
+      if (!isLogin || !token) {
+        this.cartItems = []
         return
       }
-      
+
       this.loading = true
       try {
         const res = await this.$request({
-          url: '/api/cart/999' // Demo用户ID
+          url: '/api/cart',
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
         })
-        
-        this.cartItems = res.data.map(item => ({
-          ...item,
-          selected: false
-        }))
+
+        // 处理返回的购物车数据
+        if (res.data && res.data.items) {
+          this.cartItems = res.data.items.map(item => ({
+            ...item,
+            selected: false // 默认不选中
+          }))
+        } else {
+          this.cartItems = []
+        }
+
       } catch (error) {
         console.error('加载购物车失败:', error)
+        uni.showToast({
+          title: '加载购物车失败',
+          icon: 'none'
+        })
+        this.cartItems = []
       } finally {
         this.loading = false
       }
@@ -162,29 +180,57 @@ export default {
     
     async decreaseQuantity(item) {
       if (item.quantity > 1) {
-        item.quantity--
-        await this.updateCartItem(item)
+        const newQuantity = item.quantity - 1
+        await this.updateCartItem(item, newQuantity)
       }
     },
-    
+
     async increaseQuantity(item) {
-      item.quantity++
-      await this.updateCartItem(item)
+      // 检查库存限制
+      if (item.product && item.product.stock && item.quantity >= item.product.stock) {
+        uni.showToast({
+          title: '库存不足',
+          icon: 'none'
+        })
+        return
+      }
+
+      const newQuantity = item.quantity + 1
+      await this.updateCartItem(item, newQuantity)
     },
-    
-    async updateCartItem(item) {
+
+    async updateCartItem(item, newQuantity) {
+      const token = uni.getStorageSync('token')
+      if (!token) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
       try {
         await this.$request({
-          url: '/api/cart',
-          method: 'POST',
+          url: `/api/cart/${item.id}`,
+          method: 'PUT',
+          header: {
+            'Authorization': `Bearer ${token}`
+          },
           data: {
-            userId: 999,
-            productId: item.productId,
-            quantity: item.quantity
+            quantity: newQuantity
           }
         })
+
+        // 更新本地数据
+        item.quantity = newQuantity
+        item.subtotal = item.product.price * newQuantity
+
       } catch (error) {
         console.error('更新购物车失败:', error)
+        uni.showToast({
+          title: '更新失败',
+          icon: 'none'
+        })
       }
     },
     
@@ -192,20 +238,57 @@ export default {
       uni.showModal({
         title: '确认删除',
         content: '确定要删除这个商品吗？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            const index = this.cartItems.findIndex(cartItem => cartItem.id === item.id)
-            if (index > -1) {
-              this.cartItems.splice(index, 1)
-            }
-            
-            uni.showToast({
-              title: '删除成功',
-              icon: 'success'
-            })
+            await this.deleteCartItem(item)
           }
         }
       })
+    },
+
+    async deleteCartItem(item) {
+      const token = uni.getStorageSync('token')
+      if (!token) {
+        uni.showToast({
+          title: '请先登录',
+          icon: 'none'
+        })
+        return
+      }
+
+      try {
+        uni.showLoading({
+          title: '删除中...'
+        })
+
+        await this.$request({
+          url: `/api/cart/${item.id}`,
+          method: 'DELETE',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        // 从本地数据中移除
+        const index = this.cartItems.findIndex(cartItem => cartItem.id === item.id)
+        if (index > -1) {
+          this.cartItems.splice(index, 1)
+        }
+
+        uni.hideLoading()
+        uni.showToast({
+          title: '删除成功',
+          icon: 'success'
+        })
+
+      } catch (error) {
+        uni.hideLoading()
+        console.error('删除购物车项失败:', error)
+        uni.showToast({
+          title: '删除失败',
+          icon: 'none'
+        })
+      }
     },
     
     goShopping() {
