@@ -390,6 +390,74 @@ let productFavorites = [
   }
 ];
 
+// 支付记录
+let paymentRecords = [
+  {
+    id: 1,
+    payment_id: 'WX1720435200001',
+    order_id: 1,
+    user_id: 999,
+    amount: 8999.00,
+    payment_method: 'wechat_pay',
+    status: 'paid',
+    transaction_id: 'TXN1720435200001',
+    created_at: new Date('2024-07-08'),
+    paid_at: new Date('2024-07-08')
+  }
+];
+
+// 物流记录
+let logisticsRecords = [
+  {
+    id: 1,
+    tracking_number: 'SF1720435200001',
+    order_id: 1,
+    company_code: 'sf',
+    company_name: '顺丰速运',
+    status: 'delivered',
+    current_location: '目的地',
+    estimated_delivery: new Date('2024-07-09'),
+    created_at: new Date('2024-07-08'),
+    delivered_at: new Date('2024-07-09')
+  }
+];
+
+// 物流轨迹
+let logisticsTraces = [
+  {
+    id: 1,
+    tracking_number: 'SF1720435200001',
+    time: new Date('2024-07-08 10:00:00'),
+    status: 'collected',
+    description: '商品已从发货仓库揽收',
+    location: '深圳市南山区'
+  },
+  {
+    id: 2,
+    tracking_number: 'SF1720435200001',
+    time: new Date('2024-07-08 14:00:00'),
+    status: 'in_transit',
+    description: '快件已发出',
+    location: '深圳转运中心'
+  },
+  {
+    id: 3,
+    tracking_number: 'SF1720435200001',
+    time: new Date('2024-07-09 09:00:00'),
+    status: 'out_for_delivery',
+    description: '快件已到达目的地，正在派送中',
+    location: '目的地派送点'
+  },
+  {
+    id: 4,
+    tracking_number: 'SF1720435200001',
+    time: new Date('2024-07-09 15:30:00'),
+    status: 'delivered',
+    description: '快件已签收，签收人：本人',
+    location: '目的地'
+  }
+];
+
 // 自增ID计数器
 let counters = {
   users: users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1,
@@ -403,7 +471,10 @@ let counters = {
   coupons: coupons.length + 1,
   userCoupons: userCoupons.length + 1,
   searchHistory: searchHistory.length + 1,
-  productFavorites: productFavorites.length + 1
+  productFavorites: productFavorites.length + 1,
+  paymentRecords: paymentRecords.length + 1,
+  logisticsRecords: logisticsRecords.length + 1,
+  logisticsTraces: logisticsTraces.length + 1
 };
 
 /**
@@ -511,6 +582,9 @@ module.exports = {
   userCoupons,
   searchHistory,
   productFavorites,
+  paymentRecords,
+  logisticsRecords,
+  logisticsTraces,
 
   // 工具函数
   getNextId,

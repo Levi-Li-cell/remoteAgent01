@@ -42,6 +42,11 @@ const {
   comparePassword
 } = require('./models/data');
 
+// 导入服务
+const paymentService = require('./services/paymentService');
+const logisticsService = require('./services/logisticsService');
+const notificationService = require('./services/notificationService');
+
 // 导入Swagger配置
 const { specs, swaggerUi, swaggerUiOptions } = require('./config/swagger');
 
@@ -1806,6 +1811,796 @@ app.get('/api/search/hot',
       .map(item => item.keyword);
 
     successResponse(res, hotKeywords);
+  })
+);
+
+// ================================
+// 支付相关API
+// ================================
+
+/**
+ * @swagger
+ * /api/payment/methods:
+ *   get:
+ *     summary: 获取支持的支付方式
+ *     tags: [支付系统]
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ */
+app.get('/api/payment/methods',
+  asyncHandler(async (req, res) => {
+    const methods = paymentService.getSupportedPaymentMethods();
+    successResponse(res, methods);
+  })
+);
+
+/**
+ * @swagger
+ * /api/payment/create:
+ *   post:
+ *     summary: 创建支付订单
+ *     tags: [支付系统]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - order_id
+ *               - payment_method
+ *             properties:
+ *               order_id:
+ *                 type: integer
+ *               payment_method:
+ *                 type: string
+ *                 enum: [wechat_pay, alipay, credit_card]
+ *     responses:
+ *       200:
+ *         description: 支付订单创建成功
+ */
+app.post('/api/payment/create',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { order_id, payment_method } = req.body;
+    const userId = req.user.id;
+
+    // 验证订单存在且属于当前用户
+    const order = orders.find(o => o.id === order_id && o.user_id === userId);
+    if (!order) {
+      throw createError.notFound('订单不存在');
+    }
+
+    // 检查订单状态
+    if (order.status !== 'pending') {
+      throw createError.badRequest('订单状态不允许支付');
+    }
+
+    // 创建支付订单
+    const paymentResult = await paymentService.createPayment(order, payment_method);
+
+    if (paymentResult.success) {
+      // 更新订单支付方式
+      order.payment_method = payment_method;
+      order.updated_at = new Date();
+
+      successResponse(res, {
+        payment_info: paymentResult.payment_info,
+        redirect_url: paymentResult.redirect_url,
+        qr_code: paymentResult.qr_code,
+        client_secret: paymentResult.client_secret
+      }, '支付订单创建成功');
+    } else {
+      throw createError.internalServerError('创建支付订单失败');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/payment/status/{payment_id}:
+ *   get:
+ *     summary: 查询支付状态
+ *     tags: [支付系统]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: payment_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 查询成功
+ */
+app.get('/api/payment/status/:payment_id',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { payment_id } = req.params;
+
+    const paymentStatus = await paymentService.queryPaymentStatus(payment_id);
+
+    // 如果支付成功，更新订单状态
+    if (paymentStatus.status === 'paid') {
+      const order = orders.find(o => o.id.toString() === payment_id.split(/[A-Z]+/)[1]);
+      if (order) {
+        order.status = 'paid';
+        order.payment_status = 'paid';
+        order.paid_at = paymentStatus.paid_at;
+        order.transaction_id = paymentStatus.transaction_id;
+        order.updated_at = new Date();
+      }
+    }
+
+    successResponse(res, paymentStatus);
+  })
+);
+
+/**
+ * @swagger
+ * /api/payment/callback/{method}:
+ *   post:
+ *     summary: 支付回调接口
+ *     tags: [支付系统]
+ *     parameters:
+ *       - in: path
+ *         name: method
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [wechat_pay, alipay, credit_card]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: 回调处理成功
+ */
+app.post('/api/payment/callback/:method',
+  asyncHandler(async (req, res) => {
+    const { method } = req.params;
+    const callbackData = req.body;
+
+    try {
+      const result = await paymentService.handlePaymentCallback(method, callbackData);
+
+      // 更新订单状态
+      if (result.status === 'paid') {
+        const order = orders.find(o => o.id.toString() === result.payment_id.split(/[A-Z]+/)[1]);
+        if (order) {
+          order.status = 'paid';
+          order.payment_status = 'paid';
+          order.paid_at = result.paid_at;
+          order.transaction_id = result.transaction_id;
+          order.updated_at = new Date();
+        }
+      }
+
+      // 返回成功响应（根据不同支付平台要求的格式）
+      if (method === 'wechat_pay') {
+        res.send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
+      } else if (method === 'alipay') {
+        res.send('success');
+      } else {
+        res.json({ received: true });
+      }
+    } catch (error) {
+      console.error('支付回调处理失败:', error);
+
+      if (method === 'wechat_pay') {
+        res.send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[ERROR]]></return_msg></xml>');
+      } else if (method === 'alipay') {
+        res.send('fail');
+      } else {
+        res.status(400).json({ error: 'Callback processing failed' });
+      }
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/payment/refund:
+ *   post:
+ *     summary: 申请退款
+ *     tags: [支付系统]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - order_id
+ *               - refund_amount
+ *               - reason
+ *             properties:
+ *               order_id:
+ *                 type: integer
+ *               refund_amount:
+ *                 type: number
+ *               reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 退款申请成功
+ */
+app.post('/api/payment/refund',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { order_id, refund_amount, reason } = req.body;
+    const userId = req.user.id;
+
+    // 验证订单
+    const order = orders.find(o => o.id === order_id && o.user_id === userId);
+    if (!order) {
+      throw createError.notFound('订单不存在');
+    }
+
+    // 检查订单状态
+    if (order.payment_status !== 'paid') {
+      throw createError.badRequest('订单未支付，无法退款');
+    }
+
+    // 检查退款金额
+    if (refund_amount > order.total_amount) {
+      throw createError.badRequest('退款金额不能超过订单金额');
+    }
+
+    // 申请退款
+    const refundResult = await paymentService.requestRefund(
+      order.transaction_id,
+      refund_amount,
+      reason
+    );
+
+    if (refundResult.success) {
+      // 更新订单状态
+      order.refund_status = 'processing';
+      order.refund_amount = refund_amount;
+      order.refund_reason = reason;
+      order.updated_at = new Date();
+
+      successResponse(res, refundResult.refund_info, '退款申请提交成功');
+    } else {
+      throw createError.internalServerError('退款申请失败');
+    }
+  })
+);
+
+// ================================
+// 物流跟踪API
+// ================================
+
+/**
+ * @swagger
+ * /api/logistics/companies:
+ *   get:
+ *     summary: 获取支持的物流公司
+ *     tags: [物流跟踪]
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ */
+app.get('/api/logistics/companies',
+  asyncHandler(async (req, res) => {
+    const companies = logisticsService.getSupportedCompanies();
+    successResponse(res, companies);
+  })
+);
+
+/**
+ * @swagger
+ * /api/logistics/ship:
+ *   post:
+ *     summary: 创建发货单
+ *     tags: [物流跟踪]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - order_id
+ *               - company_code
+ *             properties:
+ *               order_id:
+ *                 type: integer
+ *               company_code:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 发货成功
+ */
+app.post('/api/logistics/ship',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { order_id, company_code } = req.body;
+    const userId = req.user.id;
+
+    // 验证订单（这里简化处理，实际应该有管理员权限验证）
+    const order = orders.find(o => o.id === order_id);
+    if (!order) {
+      throw createError.notFound('订单不存在');
+    }
+
+    // 检查订单状态
+    if (order.status !== 'paid') {
+      throw createError.badRequest('订单未支付，无法发货');
+    }
+
+    // 创建物流订单
+    const logisticsResult = await logisticsService.createLogisticsOrder(order, company_code);
+
+    if (logisticsResult.success) {
+      // 更新订单状态
+      order.status = 'shipped';
+      order.shipping_company = logisticsResult.logistics_info.company_name;
+      order.tracking_number = logisticsResult.logistics_info.tracking_number;
+      order.shipped_at = new Date();
+      order.updated_at = new Date();
+
+      successResponse(res, {
+        logistics_info: logisticsResult.logistics_info,
+        tracking_traces: logisticsResult.tracking_traces
+      }, '发货成功');
+    } else {
+      throw createError.internalServerError('创建物流订单失败');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/logistics/track/{tracking_number}:
+ *   get:
+ *     summary: 查询物流信息
+ *     tags: [物流跟踪]
+ *     parameters:
+ *       - in: path
+ *         name: tracking_number
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: company_code
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 查询成功
+ */
+app.get('/api/logistics/track/:tracking_number',
+  asyncHandler(async (req, res) => {
+    const { tracking_number } = req.params;
+    const { company_code } = req.query;
+
+    if (!company_code) {
+      throw createError.badRequest('缺少物流公司代码');
+    }
+
+    const trackingResult = await logisticsService.trackLogistics(tracking_number, company_code);
+
+    if (trackingResult.success) {
+      successResponse(res, trackingResult.logistics_info);
+    } else {
+      throw createError.internalServerError('查询物流信息失败');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/orders/{id}/logistics:
+ *   get:
+ *     summary: 获取订单物流信息
+ *     tags: [物流跟踪]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ */
+app.get('/api/orders/:id/logistics',
+  authenticateToken,
+  validateId,
+  asyncHandler(async (req, res) => {
+    const orderId = parseInt(req.params.id);
+    const userId = req.user.id;
+
+    const order = orders.find(o => o.id === orderId && o.user_id === userId);
+    if (!order) {
+      throw createError.notFound('订单不存在');
+    }
+
+    if (!order.tracking_number) {
+      return successResponse(res, {
+        has_logistics: false,
+        message: '订单尚未发货'
+      });
+    }
+
+    // 根据快递单号推断物流公司（简化处理）
+    const companyCode = this.getCompanyCodeFromTrackingNumber(order.tracking_number);
+
+    const trackingResult = await logisticsService.trackLogistics(order.tracking_number, companyCode);
+
+    if (trackingResult.success) {
+      successResponse(res, {
+        has_logistics: true,
+        order_info: {
+          order_id: order.id,
+          order_no: order.order_no,
+          status: order.status,
+          shipped_at: order.shipped_at
+        },
+        logistics_info: trackingResult.logistics_info
+      });
+    } else {
+      throw createError.internalServerError('查询物流信息失败');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/logistics/update:
+ *   post:
+ *     summary: 更新物流状态（物流公司回调）
+ *     tags: [物流跟踪]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tracking_number
+ *               - status
+ *               - description
+ *               - location
+ *             properties:
+ *               tracking_number:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ */
+app.post('/api/logistics/update',
+  asyncHandler(async (req, res) => {
+    const { tracking_number, status, description, location } = req.body;
+
+    const updateResult = await logisticsService.updateLogisticsStatus(
+      tracking_number,
+      status,
+      description,
+      location
+    );
+
+    if (updateResult.success) {
+      // 如果是签收状态，更新对应订单状态
+      if (logisticsService.isDelivered(status)) {
+        const order = orders.find(o => o.tracking_number === tracking_number);
+        if (order) {
+          order.status = 'delivered';
+          order.delivered_at = new Date();
+          order.updated_at = new Date();
+        }
+      }
+
+      successResponse(res, updateResult.update_info, '物流状态更新成功');
+    } else {
+      throw createError.internalServerError('更新物流状态失败');
+    }
+  })
+);
+
+// 工具方法：根据快递单号推断物流公司
+function getCompanyCodeFromTrackingNumber(trackingNumber) {
+  if (trackingNumber.startsWith('SF')) return 'sf';
+  if (trackingNumber.startsWith('EA')) return 'ems';
+  if (trackingNumber.startsWith('STO')) return 'sto';
+  if (trackingNumber.startsWith('YT')) return 'yt';
+  if (trackingNumber.startsWith('ZTO')) return 'zto';
+  if (trackingNumber.startsWith('YD')) return 'yunda';
+  if (trackingNumber.startsWith('JD')) return 'jd';
+  if (trackingNumber.startsWith('DB')) return 'db';
+  return 'sf'; // 默认顺丰
+}
+
+// ================================
+// 消息通知API
+// ================================
+
+/**
+ * @swagger
+ * /api/notifications:
+ *   get:
+ *     summary: 获取用户通知列表
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: read
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ */
+app.get('/api/notifications',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { page = 1, limit = 20, type, read } = req.query;
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit)
+    };
+
+    if (type) options.type = type;
+    if (read !== undefined) options.read = read === 'true';
+
+    const result = notificationService.getUserNotifications(userId, options);
+
+    paginatedResponse(res, result.notifications, result.pagination, {
+      unread_count: result.unread_count
+    });
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/{id}/read:
+ *   put:
+ *     summary: 标记通知为已读
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 标记成功
+ */
+app.put('/api/notifications/:id/read',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const success = notificationService.markAsRead(id, userId);
+
+    if (success) {
+      successResponse(res, null, '标记为已读成功');
+    } else {
+      throw createError.notFound('通知不存在或已读');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/read-all:
+ *   put:
+ *     summary: 标记所有通知为已读
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 标记成功
+ */
+app.put('/api/notifications/read-all',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+
+    const count = notificationService.markAllAsRead(userId);
+
+    successResponse(res, { count }, `已标记${count}条通知为已读`);
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/{id}:
+ *   delete:
+ *     summary: 删除通知
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ */
+app.delete('/api/notifications/:id',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const success = notificationService.deleteNotification(id, userId);
+
+    if (success) {
+      successResponse(res, null, '删除成功');
+    } else {
+      throw createError.notFound('通知不存在');
+    }
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/settings:
+ *   get:
+ *     summary: 获取通知设置
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ */
+app.get('/api/notifications/settings',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const settings = notificationService.getUserNotificationSettings(userId);
+    successResponse(res, settings);
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/settings:
+ *   put:
+ *     summary: 更新通知设置
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               in_app:
+ *                 type: boolean
+ *               sms:
+ *                 type: boolean
+ *               email:
+ *                 type: boolean
+ *               push:
+ *                 type: boolean
+ *               order_notifications:
+ *                 type: boolean
+ *               payment_notifications:
+ *                 type: boolean
+ *               promotion_notifications:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ */
+app.put('/api/notifications/settings',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const settings = req.body;
+
+    const updatedSettings = notificationService.updateUserNotificationSettings(userId, settings);
+
+    successResponse(res, updatedSettings, '通知设置更新成功');
+  })
+);
+
+/**
+ * @swagger
+ * /api/notifications/send:
+ *   post:
+ *     summary: 发送通知（管理员接口）
+ *     tags: [消息通知]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *               - type
+ *               - title
+ *               - content
+ *             properties:
+ *               user_id:
+ *                 type: integer
+ *               type:
+ *                 type: string
+ *               title:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *               channels:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               data:
+ *                 type: object
+ *               priority:
+ *                 type: string
+ *                 enum: [low, normal, high]
+ *     responses:
+ *       200:
+ *         description: 发送成功
+ */
+app.post('/api/notifications/send',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    // 这里应该验证管理员权限，简化处理
+    const notificationData = req.body;
+
+    const result = await notificationService.sendNotification(notificationData);
+
+    if (result.success) {
+      successResponse(res, result, '通知发送成功');
+    } else {
+      throw createError.internalServerError('通知发送失败');
+    }
   })
 );
 

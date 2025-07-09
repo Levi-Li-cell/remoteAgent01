@@ -95,6 +95,22 @@
 				"navigationBarTitleText": "领券中心"
 			}
 		}
+,
+		{
+			"path": "pages/user/notifications",
+			"style": {
+				"navigationBarTitleText": "消息通知",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/user/notification-settings",
+			"style": {
+				"navigationBarTitleText": "通知设置",
+				"navigationStyle": "custom"
+			}
+		}
 	],
 	"tabBar": {
 		"color": "#7A7E83",

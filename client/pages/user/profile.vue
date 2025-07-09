@@ -73,6 +73,13 @@
         <text class="menu-arrow">></text>
       </view>
 
+      <view class="menu-item" @click="goNotifications">
+        <text class="menu-icon">🔔</text>
+        <text class="menu-name">消息通知</text>
+        <view v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
+        <text class="menu-arrow">></text>
+      </view>
+
       <view class="menu-item" @click="goCustomerService">
         <text class="menu-icon">💬</text>
         <text class="menu-name">客服中心</text>
@@ -98,12 +105,16 @@ export default {
   data() {
     return {
       isLogin: false,
-      userInfo: {}
+      userInfo: {},
+      unreadCount: 0
     }
   },
   
   onShow() {
     this.checkLoginStatus()
+    if (this.isLogin) {
+      this.loadUnreadCount()
+    }
   },
 
   methods: {
@@ -226,6 +237,31 @@ export default {
       uni.navigateTo({
         url: '/pages/user/coupons'
       })
+    },
+
+    goNotifications() {
+      if (!this.isLogin) {
+        this.goLogin()
+        return
+      }
+
+      uni.navigateTo({
+        url: '/pages/user/notifications'
+      })
+    },
+
+    async loadUnreadCount() {
+      try {
+        const res = await this.$request({
+          url: '/api/notifications',
+          method: 'GET',
+          data: { page: 1, limit: 1, read: false }
+        })
+
+        this.unreadCount = res.extra_data?.unread_count || 0
+      } catch (error) {
+        console.error('加载未读消息数量失败:', error)
+      }
     },
     
     goCustomerService() {
@@ -402,6 +438,17 @@ export default {
 .menu-name {
   flex: 1;
   font-size: 32rpx;
+}
+
+.badge {
+  background-color: #ff3b30;
+  color: white;
+  font-size: 20rpx;
+  padding: 4rpx 8rpx;
+  border-radius: 10rpx;
+  min-width: 20rpx;
+  text-align: center;
+  margin-right: 10rpx;
 }
 
 .menu-arrow {
